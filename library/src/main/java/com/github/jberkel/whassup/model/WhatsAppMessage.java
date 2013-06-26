@@ -57,11 +57,13 @@ public class WhatsAppMessage implements Comparable<WhatsAppMessage> {
         this.key_from_me     = KEY_FROM_ME.getInt(c);
         this.timestamp       = TIMESTAMP.getLong(c);
         this.data            = DATA.getString(c);
+        this.media_size      = MEDIA_SIZE.getInt(c);
         this.status          = STATUS.getInt(c);
         this.key_id          = KEY_ID.getString(c);
         this.longitude       = LONGITUDE.getDouble(c);
         this.latitude        = LATITUDE.getDouble(c);
         this.needs_push      = NEEDS_PUSH.getInt(c);
+        this.remote_resource = REMOTE_RESOURCE.getString(c);
         this.recipient_count = RECIPIENT_COUNT.getInt(c);
         this.origin          = ORIGIN.getInt(c);
         this.media   = new Media(c);
@@ -72,13 +74,14 @@ public class WhatsAppMessage implements Comparable<WhatsAppMessage> {
     long _id;
 
     /**
-     * 49157712345@s.whatsapp.net  (single recipient)
-     * 49157712345-1369779058@g.us (group message)
+     * 49157712345@s.whatsapp.net  (single recipient: [other party number]@s.whatsapp.net)
+     * 49157712345-1369779058@g.us (group message: [creator number]-[group id]@g.us)
      */
     String key_remote_jid;
 
     /**
      * 0 = received, 1 = sent
+     * Always 1 for group events (status=6)
      */
     int key_from_me;
 
@@ -88,12 +91,25 @@ public class WhatsAppMessage implements Comparable<WhatsAppMessage> {
     String key_id;
 
     /**
-     * 0 = ?
-     * 5 = recipient received message
-     * 4 = group related?
-     * 6 = group related?
+     * 0 = received messages and messages pending delivery to the server
+     * 4 = sent message, unconfirmed reception (group messages fall here, as they never confirm)
+     * 5 = sent message, confirmed reception (not in groups)
+     * 6 = group events: creation, joins, rename, icon, etc. (check media_size)
      */
     int status;
+
+    /**
+     * Serves a double purpose:
+     * - A measure of some media size
+     * - A type of group event indicator (status = 6):
+     * 0 = Text message (not only in groups)
+     * 1 = Group name change (also on group creation; see data for new name)
+     * 4 = Contact joined group
+     * 5 = Contact left group
+     * 6 = Group icon change
+     * 7 = Contact expulsed from group
+     */
+    int media_size;
 
     int needs_push;
 
@@ -113,6 +129,9 @@ public class WhatsAppMessage implements Comparable<WhatsAppMessage> {
     double longitude;
     double latitude;
 
+    /**
+     * sender of received group messages
+     */
     String remote_resource;
 
     // > 0 for group messages
@@ -156,18 +175,40 @@ public class WhatsAppMessage implements Comparable<WhatsAppMessage> {
         return recipient_count;
     }
 
+    @Deprecated
     public String getNumber() {
+        if (isGroupMessage()) return null;
         if (TextUtils.isEmpty(key_remote_jid)) return  null;
         String[] components = key_remote_jid.split("@", 2);
         if (components.length > 1) {
+            return components[0];
+        } else {
+            return null;
+        }
+    }
+
+    public String getSenderNumber() {
+        if (TextUtils.isEmpty(key_remote_jid)) return  null;
+        if (isReceived()) {
+            String[] components;
             if (!isGroupMessage()) {
+                components = key_remote_jid.split("@", 2);
+            } else {
+                if (TextUtils.isEmpty(remote_resource)) return  null;
+                components = remote_resource.split("@", 2);
+            }
+            if (components.length > 1) {
                 return components[0];
             } else {
-                return components[0].split("-")[0];
+                return null;
             }
         } else {
             return null;
         }
+    }
+
+    public String[] getReceiversNumbers() {
+        // TODO
     }
 
     public Media getMedia() {
@@ -230,6 +271,7 @@ public class WhatsAppMessage implements Comparable<WhatsAppMessage> {
         LONGITUDE,
         LATITUDE,
         NEEDS_PUSH,
+        REMOTE_RESOURCE,
         RECIPIENT_COUNT,
         THUMB_IMAGE,
         ORIGIN,
