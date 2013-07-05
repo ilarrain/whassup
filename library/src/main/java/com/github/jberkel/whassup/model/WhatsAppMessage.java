@@ -5,6 +5,7 @@ import android.text.TextUtils;
 
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Locale;
 
 import static com.github.jberkel.whassup.model.WhatsAppMessage.Fields.*;
@@ -45,6 +46,8 @@ public class WhatsAppMessage implements Comparable<WhatsAppMessage> {
 
     private static final String GROUP  = "g.us";
     private static final String DIRECT = "s.whatsapp.net";
+    
+    private static final String OWN = "-1";
 
     public WhatsAppMessage() {
         this.media = new Media();
@@ -130,7 +133,13 @@ public class WhatsAppMessage implements Comparable<WhatsAppMessage> {
     double latitude;
 
     /**
-     * sender of received group messages
+     * [sender's number]@s.whatsapp.net on received group messages
+     * '' on received direct messages
+     *      [platform id] on very old protocol versions (until march 8, 2011)
+     *      e.g. 'iPhone-2.6.2-443', 'BB-2.4.8693-443'
+     *      Warning: this messages may still exist on some user's databases
+     * null on sent messages
+     * [sender's number] on group creation by the db's owner user
      */
     String remote_resource;
 
@@ -177,38 +186,52 @@ public class WhatsAppMessage implements Comparable<WhatsAppMessage> {
 
     @Deprecated
     public String getNumber() {
-        if (isGroupMessage()) return null;
-        if (TextUtils.isEmpty(key_remote_jid)) return  null;
-        String[] components = key_remote_jid.split("@", 2);
-        if (components.length > 1) {
-            return components[0];
-        } else {
-            return null;
-        }
+        return getChatID();
     }
 
-    public String getSenderNumber() {
-        if (TextUtils.isEmpty(key_remote_jid)) return  null;
-        if (isReceived()) {
-            String[] components;
-            if (!isGroupMessage()) {
-                components = key_remote_jid.split("@", 2);
-            } else {
-                if (TextUtils.isEmpty(remote_resource)) return  null;
-                components = remote_resource.split("@", 2);
-            }
-            if (components.length > 1) {
-                return components[0];
-            } else {
+    public String getChatID() {
+        if (TextUtils.isEmpty(key_remote_jid) || !key_remote_jid.contains("@"))
                 return null;
-            }
+        String[] components = key_remote_jid.split("@", 2);
+        return components[0];
+    }
+
+    public String getOwner() {
+        if (!isGroupMessage()) {
+            return getChatID();
         } else {
-            return null;
+            return getChatID().split("-")[0];
         }
     }
 
-    public String[] getReceiversNumbers() {
-        // TODO
+    public String getSender() {
+        if ( TextUtils.isEmpty(key_remote_jid) || !key_remote_jid.contains("@") )
+                return null;
+        if ( isReceived() || !TextUtils.isEmpty(remote_resource) ) {
+            String[] components = !TextUtils.isEmpty(remote_resource) ?
+                    remote_resource.split("@", 2) : key_remote_jid.split("@", 2);
+            if (TextUtils.isDigitsOnly(components[0])) {
+                return components[0];
+            } else { // Handle rare case with really old messages in DB (before march 9th, 2011).
+                components = key_remote_jid.split("@", 2);
+                return components[0];
+            }
+        } else {
+            return OWN;
+        }
+    }
+
+    // Note: OWN may already be on the list if we are the group owner and we don't have the DB owner's number.
+    public String[] getRecipients() {
+        if ( TextUtils.isEmpty(key_remote_jid) || !key_remote_jid.contains("@") )
+                return null;
+        HashSet<String> recipients = new HashSet<String>();
+        recipients.add( getOwner() );
+        recipients.add( OWN );
+        // TODO: Add the other recipients
+        // TODO: We need other object to search group members in DB.
+        recipients.remove( getSender() );
+        return recipients.toArray(); 
     }
 
     public Media getMedia() {
