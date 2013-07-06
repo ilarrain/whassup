@@ -152,6 +152,10 @@ public class WhatsAppMessage implements Comparable<WhatsAppMessage> {
         return _id;
     }
 
+     public String getChatId() {
+        return key_remote_jid;
+    }
+
     public boolean isReceived() {
         return key_from_me == 0;
     }
@@ -186,21 +190,17 @@ public class WhatsAppMessage implements Comparable<WhatsAppMessage> {
 
     @Deprecated
     public String getNumber() {
-        return getChatID();
-    }
-
-    public String getChatID() {
-        if (TextUtils.isEmpty(key_remote_jid) || !key_remote_jid.contains("@"))
-                return null;
-        String[] components = key_remote_jid.split("@", 2);
-        return components[0];
+        return getOwner();
     }
 
     public String getOwner() {
+        if (TextUtils.isEmpty(key_remote_jid) || !key_remote_jid.contains("@"))
+                return null;
+        String[] components = key_remote_jid.split("@", 2);
         if (!isGroupMessage()) {
-            return getChatID();
+            return components[0];
         } else {
-            return getChatID().split("-")[0];
+            return components[0].split("-")[0];
         }
     }
 
