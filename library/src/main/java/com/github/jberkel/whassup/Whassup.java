@@ -109,6 +109,51 @@ public class Whassup {
         return getMessages(0, -1);
     }
 
+    public String getOwnNumber() {
+        // TODO
+        // SELECT remote_resource FROM messages WHERE key_from_me = 1 AND status = 6 AND media_size = 1 AND remote_resource NOT LIKE '%@s.whatsapp.net' LIMIT 1
+        return null;
+    }
+
+    public Date getChatCreationTimestamp(String chatId) {
+        // TODO
+        // SELECT timestamp FROM messages WHERE key_remote_jid = '[group ID]@g.us' ORDER BY _id LIMIT 1
+        return null;
+    }
+
+    public Date getChatCreationTimestamp(WhatsAppMessage message) {
+        return getChatCreationTimestamp(message.getChatId());
+    }
+
+    public String getGroupName(String chatId, Date timestamp) {
+        // TODO
+        // SELECT data FROM messages WHERE key_remote_jid = '[group ID]@g.us' AND status = 6 AND media_size = 1 AND timestamp <= [msg timestamp] ORDER BY _id DESC LIMIT 1
+        return null;
+    }
+
+    public String getGroupName(String chatId) {
+        return getGroupName(chatId, null);
+    }
+
+    public String getGroupName(WhatsAppMessage message) {
+        return getGroupName(message.getChatId(), message.getTimestamp());
+    }
+
+    public String[] getGroupMembers(String chatId, Date timestamp) {
+        // TODO
+        // SELECT remote_resource, media_size, timestamp FROM messages WHERE key_remote_jid = '[group ID]@g.us' AND status = 6 AND media_size in (4,5,7) AND timestamp <= [msg timestamp] ORDER BY _id
+        // 
+        return null;
+    }
+
+    public String[] getGroupMembers(String chatId) {
+        return getGroupMembers(chatId, null);
+    }
+
+    public String[] getGroupMembers(WhatsAppMessage message) {
+        return getGroupMembers(message.getChatId(), message.getTimestamp());
+    }
+
     /**
      * @return if there is a whatsapp backup available
      */
